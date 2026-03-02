@@ -54,6 +54,7 @@ import (
 	"github.com/nvidia/bare-metal-manager-rest/api/pkg/api/model"
 	"github.com/nvidia/bare-metal-manager-rest/api/pkg/api/pagination"
 	auth "github.com/nvidia/bare-metal-manager-rest/auth/pkg/authorization"
+	cwutil "github.com/nvidia/bare-metal-manager-rest/common/pkg/util"
 	sutil "github.com/nvidia/bare-metal-manager-rest/common/pkg/util"
 
 	sc "github.com/nvidia/bare-metal-manager-rest/api/pkg/client/site"
@@ -1072,13 +1073,13 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 			workflowOptions := temporalClient.StartWorkflowOptions{
 				ID:                       "remove-machine-instance-type-association" + machine.InstanceTypeID.String(),
 				TaskQueue:                queue.SiteTaskQueue,
-				WorkflowExecutionTimeout: common.WorkflowExecutionTimeout,
+				WorkflowExecutionTimeout: cwutil.WorkflowExecutionTimeout,
 			}
 
 			logger.Info().Msg("triggering RemoveMachineInstanceTypeAssociation workflow")
 
 			// Add context deadlines
-			ctx, cancel := context.WithTimeout(ctx, common.WorkflowContextTimeout)
+			ctx, cancel := context.WithTimeout(ctx, cwutil.WorkflowContextTimeout)
 			defer cancel()
 
 			// Trigger Site workflow
@@ -1132,13 +1133,13 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 			workflowOptions := temporalClient.StartWorkflowOptions{
 				ID:                       "associate-machines-with-instance-type-" + newit.ID.String(),
 				TaskQueue:                queue.SiteTaskQueue,
-				WorkflowExecutionTimeout: common.WorkflowExecutionTimeout,
+				WorkflowExecutionTimeout: cwutil.WorkflowExecutionTimeout,
 			}
 
 			logger.Info().Msg("triggering AssociateMachinesWithInstanceType workflow")
 
 			// Add context deadlines
-			ctx, cancel := context.WithTimeout(ctx, common.WorkflowContextTimeout)
+			ctx, cancel := context.WithTimeout(ctx, cwutil.WorkflowContextTimeout)
 			defer cancel()
 
 			// Trigger Site workflow
@@ -1245,7 +1246,7 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 		// Trigger Site workflow to set/remove maintenance mode
 		wfOpts := temporalClient.StartWorkflowOptions{
 			ID:                       "site-set-maintenance-" + machine.ID,
-			WorkflowExecutionTimeout: common.WorkflowExecutionTimeout,
+			WorkflowExecutionTimeout: cwutil.WorkflowExecutionTimeout,
 			TaskQueue:                queue.SiteTaskQueue,
 		}
 
@@ -1263,7 +1264,7 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 		}
 
 		// Add context deadlines
-		ctx, cancel := context.WithTimeout(ctx, common.WorkflowContextTimeout)
+		ctx, cancel := context.WithTimeout(ctx, cwutil.WorkflowContextTimeout)
 		defer cancel()
 
 		we, err := stc.ExecuteWorkflow(ctx, wfOpts, "SetMachineMaintenance", wfReq)
@@ -1284,7 +1285,7 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 				logger.Error().Err(err).Msg("failed to set/remove Machine maintenance mode, timeout occurred executing workflow on Site.")
 
 				// Create a new context deadlines
-				newctx, newcancel := context.WithTimeout(context.Background(), common.WorkflowContextNewAfterTimeout)
+				newctx, newcancel := context.WithTimeout(context.Background(), cwutil.WorkflowContextNewAfterTimeout)
 				defer newcancel()
 
 				// Initiate termination workflow
@@ -1347,7 +1348,7 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 		// Trigger Site workflow to update labels with Machine metadata
 		wfOpts := temporalClient.StartWorkflowOptions{
 			ID:                       "site-update-machine-metadata-" + machine.ID,
-			WorkflowExecutionTimeout: common.WorkflowExecutionTimeout,
+			WorkflowExecutionTimeout: cwutil.WorkflowExecutionTimeout,
 			TaskQueue:                queue.SiteTaskQueue,
 		}
 
@@ -1372,7 +1373,7 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 		}
 
 		// Add context deadlines
-		ctx, cancel := context.WithTimeout(ctx, common.WorkflowContextTimeout)
+		ctx, cancel := context.WithTimeout(ctx, cwutil.WorkflowContextTimeout)
 		defer cancel()
 
 		we, err := stc.ExecuteWorkflow(ctx, wfOpts, "UpdateMachineMetadata", wfReq)
@@ -1394,7 +1395,7 @@ func (umh UpdateMachineHandler) Handle(c echo.Context) error {
 				logger.Error().Err(err).Msg("failed to update Machine metadata, timeout occurred executing workflow on Site.")
 
 				// Create a new context deadlines
-				newctx, newcancel := context.WithTimeout(context.Background(), common.WorkflowContextNewAfterTimeout)
+				newctx, newcancel := context.WithTimeout(context.Background(), cwutil.WorkflowContextNewAfterTimeout)
 				defer newcancel()
 
 				// Initiate termination workflow
