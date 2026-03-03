@@ -50,7 +50,7 @@ helm upgrade --install carbide-rest charts/carbide-rest/ \
 Site agent requires a registered site (UUID + OTP). The chart must be installed first, then bootstrapped:
 
 ```bash
-# 1. Install chart (will CrashLoop until bootstrapped)
+# 1. Install chart
 helm upgrade --install carbide-rest-site-agent charts/carbide-rest-site-agent/ \
   --namespace $NS \
   --set global.image.repository=$REPO \
@@ -61,31 +61,6 @@ helm upgrade --install carbide-rest-site-agent charts/carbide-rest-site-agent/ \
 
 # 3. Site agent will stabilize after bootstrap
 kubectl -n $NS rollout status statefulset/carbide-rest-site-agent --timeout=120s
-```
-
-## Local Development (Kind)
-
-Use `Makefile.helm` for local development:
-
-```bash
-# Full infrastructure (PostgreSQL, Temporal, Keycloak, secrets, cert-manager)
-make -f Makefile.helm kind-reset-infra
-
-# Deploy umbrella chart
-make -f Makefile.helm helm-deploy
-
-# Deploy site-agent (bootstrap + install)
-make -f Makefile.helm helm-deploy-site-agent
-
-# Deploy everything in one command
-make -f Makefile.helm helm-deploy-all
-
-# Verify
-make -f Makefile.helm helm-verify
-make -f Makefile.helm helm-verify-site-agent
-
-# Uninstall all charts
-make -f Makefile.helm helm-uninstall
 ```
 
 ## Uninstall
