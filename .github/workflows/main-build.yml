@@ -143,11 +143,8 @@ jobs:
     strategy:
       matrix:
         chart:
-          - helm/charts/carbide-rest-api
-          - helm/charts/carbide-rest-workflow
-          - helm/charts/carbide-rest-site-manager
+          - helm/charts/carbide-rest
           - helm/charts/carbide-rest-site-agent
-          - helm/charts/carbide-rest-db
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -170,11 +167,8 @@ jobs:
     strategy:
       matrix:
         chart:
-          - helm/charts/carbide-rest-api
-          - helm/charts/carbide-rest-workflow
-          - helm/charts/carbide-rest-site-manager
+          - helm/charts/carbide-rest
           - helm/charts/carbide-rest-site-agent
-          - helm/charts/carbide-rest-db
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

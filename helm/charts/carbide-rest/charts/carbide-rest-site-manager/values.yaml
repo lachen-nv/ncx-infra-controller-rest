@@ -1,16 +1,3 @@
-global:
-  image:
-    repository: ""
-    tag: ""
-    pullPolicy: IfNotPresent
-  imagePullSecrets:
-    - name: image-pull-secret
-  certificate:
-    issuerRef:
-      kind: ClusterIssuer
-      name: carbide-rest-ca-issuer
-      group: cert-manager.io
-
 replicaCount: 1
 
 nameOverride: ""

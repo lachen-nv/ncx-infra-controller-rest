@@ -1,16 +1,22 @@
-# Bare Metal Manager REST Helm Charts
+# Carbide REST Helm Charts
 
-Helm charts for deploying the Bare Metal Manager REST API platform services.
+Helm charts for deploying the Carbide REST API platform services.
 
 ## Charts
 
-| Chart | Description |
-|-------|-------------|
+| Chart | Path | Description |
+|-------|------|-------------|
+| `carbide-rest` | `charts/carbide-rest/` | Umbrella chart (api + workflow + site-manager + db) |
+| `carbide-rest-site-agent` | `charts/carbide-rest-site-agent/` | Elektra site agent (deployed independently per-site) |
+
+### Umbrella Sub-Charts
+
+| Sub-Chart | Description |
+|-----------|-------------|
+| `carbide-rest-api` | REST API server (port 8388) |
+| `carbide-rest-workflow` | Temporal workers (cloud-worker + site-worker) |
 | `carbide-rest-site-manager` | Site lifecycle manager (TLS on port 8100) |
 | `carbide-rest-db` | Database migration job (Bun ORM, idempotent) |
-| `carbide-rest-workflow` | Temporal workers (cloud-worker + site-worker) |
-| `carbide-rest-api` | REST API server (port 8388) |
-| `carbide-rest-site-agent` | Elektra site agent (deployed independently per-site) |
 
 ## Prerequisites
 
@@ -20,64 +26,80 @@ The following must be running before installing charts:
 - **Temporal** server with `cloud` and `site` namespaces
 - **Keycloak** authentication server
 - **cert-manager** with ClusterIssuer `carbide-rest-ca-issuer`
-- **Site CRD**: `kubectl apply -f deploy/kustomize/base/site-manager/site-crd.yaml`
 - **Secrets**: `db-creds`, `keycloak-client-secret`, `temporal-encryption-key`, `temporal-client-cloud-certs`
+
+> The Site CRD (`sites.forge.nvidia.io`) is bundled in `carbide-rest-site-manager/crds/` and installed automatically by Helm.
 
 ## Install
 
-Charts are deployed individually in dependency order:
+### Umbrella Chart (cloud-side services)
 
 ```bash
-# Set common variables
-REPO=ghcr.io/your/registry
+REPO=nvcr.io/0837451325059433/carbide-dev
 TAG=latest
 NS=carbide-rest
 
-# 1. Site Manager
-helm upgrade --install carbide-rest-site-manager charts/carbide-rest-site-manager/ \
-  --namespace $NS --set global.image.repository=$REPO --set global.image.tag=$TAG
-
-# 2. DB Migration
-helm upgrade --install carbide-rest-db charts/carbide-rest-db/ \
-  --namespace $NS --set global.image.repository=$REPO --set global.image.tag=$TAG
-
-# 3. Workflow Workers
-helm upgrade --install carbide-rest-workflow charts/carbide-rest-workflow/ \
-  --namespace $NS --set global.image.repository=$REPO --set global.image.tag=$TAG
-
-# 4. REST API
-helm upgrade --install carbide-rest-api charts/carbide-rest-api/ \
-  --namespace $NS --set global.image.repository=$REPO --set global.image.tag=$TAG
+helm upgrade --install carbide-rest charts/carbide-rest/ \
+  --namespace $NS --create-namespace \
+  --set global.image.repository=$REPO \
+  --set global.image.tag=$TAG
 ```
 
-## Site Agent
+### Site Agent (deployed separately per-site)
 
-Site agent is deployed separately because it requires a registered site (UUID + OTP).
+Site agent requires a registered site (UUID + OTP). The chart must be installed first, then bootstrapped:
 
 ```bash
 # 1. Install chart (will CrashLoop until bootstrapped)
 helm upgrade --install carbide-rest-site-agent charts/carbide-rest-site-agent/ \
-  --namespace $NS --set global.image.repository=$REPO --set global.image.tag=$TAG || true
+  --namespace $NS \
+  --set global.image.repository=$REPO \
+  --set global.image.tag=$TAG || true
 
-# 2. Bootstrap site registration (creates site via API, patches ConfigMap/Secret) e.g. ./scripts/setup-local.sh site-agent
+# 2. Bootstrap site registration (creates site via API, patches ConfigMap/Secret)
+./scripts/setup-local.sh site-agent
 
 # 3. Site agent will stabilize after bootstrap
 kubectl -n $NS rollout status statefulset/carbide-rest-site-agent --timeout=120s
 ```
 
+## Local Development (Kind)
+
+Use `Makefile.helm` for local development:
+
+```bash
+# Full infrastructure (PostgreSQL, Temporal, Keycloak, secrets, cert-manager)
+make -f Makefile.helm kind-reset-infra
+
+# Deploy umbrella chart
+make -f Makefile.helm helm-deploy
+
+# Deploy site-agent (bootstrap + install)
+make -f Makefile.helm helm-deploy-site-agent
+
+# Deploy everything in one command
+make -f Makefile.helm helm-deploy-all
+
+# Verify
+make -f Makefile.helm helm-verify
+make -f Makefile.helm helm-verify-site-agent
+
+# Uninstall all charts
+make -f Makefile.helm helm-uninstall
+```
+
 ## Uninstall
 
 ```bash
-helm uninstall carbide-rest-site-agent -n $NS
-helm uninstall carbide-rest-api -n $NS
-helm uninstall carbide-rest-workflow -n $NS
-helm uninstall carbide-rest-db -n $NS
-helm uninstall carbide-rest-site-manager -n $NS
+helm uninstall carbide-rest-site-agent -n carbide-rest
+helm uninstall carbide-rest -n carbide-rest
 ```
 
 ## Configuration
 
-All charts accept a `global` section:
+### Umbrella Chart (`carbide-rest`)
+
+Global values are passed to all sub-charts:
 
 ```yaml
 global:
@@ -87,11 +109,15 @@ global:
     pullPolicy: IfNotPresent
   imagePullSecrets:
     - name: image-pull-secret
-  certificate:  # only for site-manager and site-agent
+  certificate:
     issuerRef:
       kind: ClusterIssuer
       name: carbide-rest-ca-issuer
       group: cert-manager.io
 ```
+
+### Site Agent Chart (`carbide-rest-site-agent`)
+
+Standalone chart with its own `global` section (same structure as above).
 
 See each chart's `values.yaml` for full configuration options.
