@@ -122,7 +122,7 @@ jobs:
     needs:
       - detect-changes
       - validate-charts
-    if: ${{ needs.detect-changes.outputs.any_changed == 'true' && needs.validate-charts.result == 'success' && github.ref == 'refs/heads/main' }}
+    if: ${{ !cancelled() && needs.detect-changes.outputs.any_changed == 'true' && needs.validate-charts.result == 'success' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
