@@ -104,6 +104,31 @@ func (c *grpcClient) GetMachines(ctx context.Context) ([]MachineDetail, error) {
 	return result, nil
 }
 
+// GetMachines retrieves all machines known by carbide-api
+// (FindMachineIds + FindMachinesByIds).
+func (c *grpcClient) GetLeakingMachineIds(ctx context.Context) ([]string, error) {
+	ctx, cancel := context.WithTimeout(ctx, c.grpcTimeout)
+	defer cancel()
+
+	alert := "hardware-health.tray-leak-detection"
+	powerState := "on"
+	searchConfig := pb.MachineSearchConfig{
+		OnlyWithHealthAlert: &alert,
+		OnlyWithPowerState:  &powerState,
+	}
+
+	machineIDs, err := c.gclient.FindMachineIds(ctx, &searchConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, 0, len(machineIDs.GetMachineIds()))
+	for _, machineID := range machineIDs.GetMachineIds() {
+		ids = append(ids, machineID.GetId())
+	}
+	return ids, nil
+}
+
 // Version returns the version string of carbide-api, mainly as a "ping"
 func (c *grpcClient) Version(ctx context.Context) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, c.grpcTimeout)
